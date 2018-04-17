@@ -96,11 +96,9 @@
   (drop (stx->list stx) n))
 
 (define (stx-deep-map f stx)
-  (define (deep stx)
-    (if (identifier? stx)
-        (f stx)
-        (stx-deep-map f stx)))
-  (datum->syntax #f (stx-map deep stx)))
+  (if (stx-list? stx)
+    (datum->syntax #f (stx-map (lambda (arg) (stx-deep-map f arg)) stx))
+    (f stx)))
 
 ; alternate to generate-temporaries, which relies on symbolic name
 (define (fresh id)

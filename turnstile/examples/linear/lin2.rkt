@@ -7,6 +7,7 @@
 
 ;; TODO: add expected-ty version of rules
 
+(require (only-in macrotypes/typecheck infer+erase))
 (require (for-syntax syntax/id-set))
 (provide → × λ #%app ann if let
          Bool #%datum pair split free)

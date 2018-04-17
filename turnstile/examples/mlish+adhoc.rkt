@@ -24,6 +24,7 @@
 ;; for pattern matching
 (require (prefix-in stlc+cons: (only-in "stlc+cons.rkt" list)))
 (require (prefix-in stlc+tup: (only-in "stlc+tup.rkt" tup)))
+(require (only-in macrotypes/typecheck infer+erase infers+erase))
 
 ;; ML-like language + ad-hoc polymorphism
 ;; - top level recursive functions

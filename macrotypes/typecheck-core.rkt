@@ -34,6 +34,14 @@
     [(_ e)
      #'e]))
 
+(begin-for-syntax
+  (define (unwrap-erased stx)
+    (syntax-parse stx
+                  #:literals (erased)
+                  [(erased e)
+                   (transfer-stx-props #'e stx)]
+                  [_ stx])))
+
 (module+ test
   (require (for-syntax rackunit)))
 
@@ -938,13 +946,6 @@
   (define (expands/stop es #:stop-list? [stop-list? #t])
     (stx-map (λ (e) (expand/stop e #:stop-list? stop-list?)) es))
 
-  ;; expands and returns "type" according to tag, no context:
-  (define (infer+erase e #:tag [tag (current-tag)] #:stop-list? [stop-list? #t])
-    (define e+ (expand/stop e #:stop-list? stop-list?))
-    (list e+ (detach/check e+ tag #:orig e)))
-  (define (infers+erase es #:tag [tag (current-tag)] #:stop-list? [stop-list? #t])
-    (stx-map (λ (e) (infer+erase e #:tag tag #:stop-list? stop-list?)) es))
-
   ;; This is the main "expansion" fn, which allows supplying a ctx
   ;; ctx = vars and their types (or or any props, denoted with any "sep")
   ;; - each x in ctx is in scope for subsequent xs
@@ -1008,6 +1009,13 @@
          (e+ ...)
          (for/list ([e (syntax->list #'(e ...))])
            (local-expand e 'expression (decide-stop-list stop-list?) ctx)))
+
+       ;(when (not (null? (decide-stop-list stop-list?)))
+         ;(stx-map (lambda (e+)
+                    ;(define (not-erased! stx)
+                      ;(when (and (identifier? stx) (free-identifier=? stx #'erased))
+                        ;(error 'not-erased (format "found erased: ~a" e+))))
+                    ;(stx-deep-map not-erased! (unwrap-erased e+))) #'(e+ ...)))
 
        (list #'(tv+ ...) #'(X+ ... x+ ...) #'(e+ ...))]
 

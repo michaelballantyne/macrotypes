@@ -2,27 +2,7 @@
 
 ;; extends "typecheck-core.rkt" with "macrotypes"-only forms
 
-(require (except-in "typecheck-core.rkt")
-                    ;infer+erase
-;;                    infers+erase
-                    ;infer)
-                    ;; infer/ctx+erase
-                    ;; infers/ctx+erase
-                    ;; infer/tyctx+erase
-                    ;; infers/tyctx+erase
-                    ;; infer/tyctx
-                    ;; infer/ctx)
-         #;(prefix-in core:
-                    (only-in "typecheck-core.rkt"
-                    infer+erase
-;;                    infers+erase
-                    infer))
-                    ;; infer/ctx+erase
-                    ;; infers/ctx+erase
-                    ;; infer/tyctx+erase
-                    ;; infers/tyctx+erase
-                    ;; infer/tyctx
-                    ;; infer/ctx))
+(require "typecheck-core.rkt"
          (for-syntax racket/stxparam))
 (provide (all-from-out "typecheck-core.rkt")
          (all-defined-out)
@@ -57,6 +37,13 @@
   (define (add-env e env) (set-stx-prop/preserved e 'env (intro-if-stx env)))
   (define (get-env e) (intro-if-stx (syntax-property e 'env)))
 
+  ;; expands and returns "type" according to tag, no context:
+  (define (infer+erase e #:tag [tag (current-tag)] #:stop-list? [stop-list? #t])
+    (define e+ (expand/stop e #:stop-list? stop-list?))
+    (list (unwrap-erased e+) (detach/check e+ tag #:orig e)))
+  (define (infers+erase es #:tag [tag (current-tag)] #:stop-list? [stop-list? #t])
+    (stx-map (λ (e) (infer+erase e #:tag tag #:stop-list? stop-list?)) es))
+
   ;; old "infer" fns
   ;; any naming oddities/inconsistentices due to backwards compatibility
   (define (infer es #:ctx [ctx null] #:tvctx [tvctx null]
@@ -66,8 +53,10 @@
        (define/syntax-parse
          (tvs xs (e+ ...))
          (expands/ctxs es #:ctx ctx #:tvctx tvctx #:key kev #:stop-list? stop-list?))
-       (list #'tvs #'xs #'(e+ ...)
-             (stx-map (λ (e+ e) (detach/check e+ tag #:orig e)) #'(e+ ...) es)))
+       (list #'tvs #'xs
+             (stx-map unwrap-erased #'(e+ ...))
+             (stx-map (λ (e+ e) (detach/check e+ tag #:orig e))
+                      #'(e+ ...) es)))
 
   ;; shorter names
   ; ctx = type env for bound vars in term e, etc

@@ -42,7 +42,9 @@
     (define origs (lens-view flat origs*))
     (define/with-syntax [tvxs- xs- es-]
       (expands/ctxs #:tvctx tvctx #:ctx ctx (stx-map pass-orig es origs)))
-    (define es*- (lens-set flat es* #`es-))
+
+    (define es-unwrapped (stx-map unwrap-erased #'es-))
+    (define es*- (lens-set flat es* es-unwrapped))
     (list #'tvxs- #'xs- es*-))
 
   (define (infers/depths clause-depth tc-depth tvctxs/ctxs/ess/origss*
