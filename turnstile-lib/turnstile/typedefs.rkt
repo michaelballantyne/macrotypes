@@ -11,7 +11,8 @@
  define-internal-type/new
  define-internal-binding-type/new
  define-type
- (for-syntax (all-defined-out)))
+ (for-syntax (all-defined-out))
+ (for-syntax ~Any/new))
 
 (begin-for-syntax
   ;; this library does not assume a term-type distinction,
@@ -20,6 +21,20 @@
 
   (struct typerule-transformer (typerule methods)
     #:property prop:procedure (struct-field-index typerule))
+
+  ;; won't work for binding types
+  (define-syntax ~Any/new
+    (pattern-expander
+     (syntax-parser
+       [(_ tycons . rst)
+        #'((~literal #%plain-app)
+           tycons
+           (~and
+            (~or* (~seq ty (... ...) ((~literal #%plain-app) (~literal list) . more-tys))
+                  (~seq ty (... ...)))
+            (~parse rst (if (attribute more-tys)
+                            #'(ty (... ...) . more-tys)
+                            #'(ty (... ...))))))])))
 
   ;; abbrv for defining a type constructor accompanied by specific generic methods
   (define-syntax define-tycons-instance
@@ -283,6 +298,9 @@
          (struct- TY/internal () #:transparent #:omit-define-syntaxes)
          (begin-for-syntax
            (define TY/internal+ (expand/df #'TY/internal))
+           #;(begin #;begin-for-syntax (local-require racket/pretty)
+                             (printf "TY/internal+\n")
+                             (pretty-print (syntax-debug-info (values #;syntax-local-introduce TY/internal+))))
            (define-syntax TY-expander
              (pattern-expander
               (syntax-parser
@@ -291,7 +309,17 @@
                          (~parse
                           ((~literal #%plain-app) name/internal:id)
                           #'ty-to-match)
-                         (~fail #:unless (free-id=? #'name/internal TY/internal+)))]
+                         (~fail #:unless (or (free-id=? (syntax-local-introduce #'name/internal) #;#'TY/internal TY/internal+)
+                                             #;(let ()
+                                               (printf "BOOHOO\n")
+                                               (printf "found:\n")
+                                               (pretty-print (syntax-debug-info (values #;syntax-local-introduce #'name/internal)))
+                                               (pretty-print (identifier-binding #'name/internal))
+                                               (printf "expected:\n")
+                                               (pretty-print (syntax-debug-info (values #;syntax-local-introduce TY/internal+)))
+                                               (pretty-print (identifier-binding TY/internal+))
+
+                                               #f))))]
                 [(_ other-pat (... ...))
                  #'((~and ty-to-match
                           (~parse
@@ -302,7 +330,7 @@
          (define-syntax TY
            (syntax-parser
              [(~var _ id) #'(TY)]
-             [(_) (syntax-property #'(#%plain-app TY/internal) ': #'(#%plain-app TY/internal))])))]
+             [(_) (attach #'(#%plain-app TY/internal) ': #'(#%plain-app TY/internal))])))]
     [(_ TY:id #:with-binders . rst) (syntax/loc this-syntax (define-binding-type TY . rst))] ; binding type
     [(_ TY:id [#:bind k] . rst) (syntax/loc this-syntax (define-binding-type TY k . rst))] ; binding type
     [(_ TY:id (~datum :) k ms:maybe-meths)
